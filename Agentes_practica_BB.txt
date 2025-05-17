@@ -1,0 +1,36 @@
+from langchain.llms import HuggingFacePipeline
+from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from transformers import pipeline
+
+# 1. Carga de modelos ligeros
+generator = pipeline("text2text-generation", model="google/flan-t5-small")
+llm = HuggingFacePipeline(pipeline=generator)
+
+embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+vector_db = FAISS(embedding_function=embeddings)
+
+# 2. Definir el flujo del agente
+class AutonomousAgent:
+    def __init__(self):
+        self.qa_chain = RetrievalQA(llm=llm, retriever=vector_db.as_retriever())
+
+    def plan(self, goal):
+        subtasks = [f"Buscar información sobre {goal}", "Comparar opciones", "Recomendar la mejor"]
+        return subtasks
+
+    def execute(self, subtask):
+        return self.qa_chain.run(subtask)
+
+    def evaluate(self, results):
+        return f"Evaluación completada: {results}"
+
+    def run(self, goal):
+        subtasks = self.plan(goal)
+        results = [self.execute(task) for task in subtasks]
+        return self.evaluate(results)
+
+# 3. Prueba del agente
+agent = AutonomousAgent()
+print(agent.run("tres librerías open source de visualización de datos"))
